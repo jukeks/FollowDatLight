@@ -108,22 +108,22 @@ class Canvas:
         for i in range(self.width):
             offset = i * self.height
             for j in range(self.height):
-                pic[i, j] = self.intToRGB(self.data[offset + j])
+                pic[i, j] = self.int_to_rgb(self.data[offset + j])
 
         im.save(self.filename, "PNG")
 
-    def RGBToInt(self, color):
+    def rgb_to_int(self, color):
         return int(color.x*255)*256*256 + int(color.y*255)*256 + int(color.z*255)
 
-    def intToRGB(self, rgbint):
+    def int_to_rgb(self, rgbint):
         return ((rgbint >> 16) % 256, (rgbint >> 8) % 256, rgbint % 256)
 
-    def saveColor(self, x, y, color):
+    def save_color(self, x, y, color):
         #self.data[y * self.width + x] = self.RGBToInt(color)
-        self.data[x * self.height + y] = self.RGBToInt(color)
+        self.data[x * self.height + y] = self.rgb_to_int(color)
 
 
-def detectCPUs():
+def detect_cpus():
     """
     Detects the number of CPUs on a system. Cribbed from pp.
     """
@@ -143,4 +143,4 @@ def detectCPUs():
             return ncpus
     return 1 # Default
 
-Main(width=1024, height=768, jobs=detectCPUs(), recursion_depth=1).render()
+Main(width=1024, height=768, jobs=detect_cpus(), recursion_depth=1).render()

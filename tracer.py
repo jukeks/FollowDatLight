@@ -6,30 +6,30 @@ from multiprocessing import Process
 from objects import *
 
 class Tracer(Process):
-    def __init__(self, width, height, worker_id, workercount, canvas, world, camera, recursion_depth):
+    def __init__(self, width, height, worker_id, worker_count, canvas, world, camera, recursion_depth):
         self.world = world
         self.camera = camera
         self.width = width
         self.height = height
-        self.workercount = workercount
+        self.worker_count = worker_count
         self.worker_id = worker_id
         self.canvas = canvas
         self.camera_position = self.camera.position
         self.black = Point3(0, 0, 0)
         self.max_recursion_depth = recursion_depth
 
-        self.run = self.calculateRaysAndTrace
+        self.run = self.calculate_rays_and_trace
 
         Process.__init__(self)
 
-    def calculateColor(self, color, multiplier):
+    def calculate_color(self, color, multiplier):
         h, l, s = colorsys.rgb_to_hls(color.x*255, color.y*255, color.z*255)
         r, g, b = colorsys.hls_to_rgb(h, l*multiplier, s)
 
         return Point3(r/255.0, g/255.0, b/255.0)
 
     def intersect(self, ray, cur_point = None):
-        min_dis = -1
+        min_distance = -1
         closest_hit_object = None
         closest_is_point = None
 
@@ -58,20 +58,20 @@ class Tracer(Process):
                 continue
 
             # finding distance to intersection point
-            dis = self.camera_position.distance(is_point)
-            if not dis:
+            distance = self.camera_position.distance(is_point)
+            if not distance:
                 continue
 
             # -1 is for the initial value
-            if dis < min_dis or min_dis == -1:
-                min_dis = dis
+            if distance < min_distance or min_distance == -1:
+                min_distance = distance
                 closest_hit_object = o
                 closest_is_point = is_point
                 continue
 
         return (closest_hit_object, closest_is_point)
 
-    def addColors(self, c1, c2):
+    def add_colors(self, c1, c2):
         c = Point3(c1.x + c2.x, c1.y + c2.y, c1.z + c2.z)
 
         # checking for overflow
@@ -96,12 +96,12 @@ class Tracer(Process):
             blocking_object, _ = self.intersect(ray_to_light, is_point)
             if not blocking_object:
                 #color = self.addColors(color, hit_object.colorAt(is_point))
-                color = hit_object.colorAt(is_point)
+                color = hit_object.color_at(is_point)
                 break
             else:
                 #color = self.addColors(self.calculateColor(hit_object.colorAt(is_point),
                 #    blocking_object.transmittivity), color)
-                color = self.calculateColor(blocking_object.colorAt(is_point),
+                color = self.calculate_color(blocking_object.color_at(is_point),
                     blocking_object.transmittivity)
 
 
@@ -111,7 +111,7 @@ class Tracer(Process):
             reflected_ray = Ray3(is_point, normal)
             reflected_color = self.trace(reflected_ray, current_recursion_depth + 1)
 
-            color = self.addColors(self.calculateColor(reflected_color,
+            color = self.add_colors(self.calculate_color(reflected_color,
                 hit_object.reflectivity),
                 color)
 
@@ -119,7 +119,7 @@ class Tracer(Process):
 
 
 
-    def calculateRaysAndTrace(self):
+    def calculate_rays_and_trace(self):
         camera_position = self.camera.position
         eye_ray = Ray3(self.camera.position, self.camera.look_at)
         right_vector = eye_ray.v.cross(self.camera.up_vector).normalize()
@@ -134,7 +134,7 @@ class Tracer(Process):
         # TODO: calculate width more intelligently
         pixel_width = 0.02
 
-        for x in range(self.worker_id, width, self.workercount):
+        for x in range(self.worker_id, width, self.worker_count):
             # load distribution
             '''
             if (x % self.workercount) != self.worker_id:
@@ -148,7 +148,7 @@ class Tracer(Process):
                 cur_ray = Ray3(camera_position, cur_vec)
                 color = self.trace(cur_ray)
 
-                self.canvas.saveColor(x, y, color)
+                self.canvas.save_color(x, y, color)
 
             # progress reports
             if self.worker_id == 0:

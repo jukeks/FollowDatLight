@@ -15,7 +15,7 @@ class Sphere(Sphere3):
         self.transmittivity = 0.1
         self.reflectivity = 0.1
 
-    def colorAt(self, point):
+    def color_at(self, point):
         return self.color
 
     def normal(self, point):
@@ -33,7 +33,7 @@ class Surface(Plane):
     def normal(self, point):
         return self.n
 
-    def colorAt(self, point):
+    def color_at(self, point):
         # http://www.lshift.net/blog/2008/10/29/toy-raytracer-in-python
         if (int(abs(point.x) + 0.5) +
             int(abs(point.y) + 0.5) +
