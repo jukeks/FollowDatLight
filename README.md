@@ -1,9 +1,9 @@
-# Follow Dat Light, a ray tracer
+### Follow Dat Light, a ray tracer
 
-## Dependencies
+#### Dependencies
 
 *	pyeuclid http://pyeuclid.googlecode.com/svn/trunk/euclid.py
 *	PIL
 
-## Usage
+#### Usage
 Run datlight.py
