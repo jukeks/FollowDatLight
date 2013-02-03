@@ -6,7 +6,8 @@ from multiprocessing import Process
 from objects import *
 
 class Tracer(Process):
-    def __init__(self, width, height, worker_id, worker_count, canvas, world, camera, recursion_depth):
+    def __init__(self, width, height, worker_id, worker_count, canvas, world, camera,
+                 recursion_depth, multisampling = False, x_samples = 0, y_samples = 0):
         self.world = world
         self.camera = camera
         self.width = width
@@ -17,6 +18,10 @@ class Tracer(Process):
         self.camera_position = self.camera.position
         self.black = Point3(0, 0, 0)
         self.max_recursion_depth = recursion_depth
+        self.multisampling = multisampling
+        if multisampling:
+            self.x_samples = x_samples
+            self.y_samples = y_samples
 
         self.run = self.calculate_rays_and_trace
 
@@ -118,6 +123,12 @@ class Tracer(Process):
         return color
 
 
+    def average_samples(self, samples):
+        r = sum([val.x for val in samples])/len(samples)
+        g = sum([val.y for val in samples])/len(samples)
+        b = sum([val.z for val in samples])/len(samples)
+
+        return Point3(r, g, b)
 
     def calculate_rays_and_trace(self):
         camera_position = self.camera.position
@@ -132,18 +143,35 @@ class Tracer(Process):
         next_report = 10
 
         # TODO: calculate this more intelligently
-        pixel_width = 0.02/1024 * width
+        pixel_width = 0.02
 
         for x in range(self.worker_id, width, self.worker_count):
-            x_comp = right_vector.normalize() * ((x - width/2) * pixel_width)
             for y in range(height):
-                y_comp = up_vector.normalize() * ((y - height/2) * pixel_width)
+                if self.multisampling:
+                    # supersampling
+                    sample_width = pixel_width / self.x_samples
+                    sample_height = pixel_width / self.y_samples
+                    samples = []
 
-                cur_vec = eye_ray.v + x_comp + y_comp
-                cur_ray = Ray3(camera_position, cur_vec)
-                color = self.trace(cur_ray)
+                    for sample_x in range(self.x_samples):
+                        for sample_y in range(self.y_samples):
+                            x_comp = right_vector.normalize() * (((x - width/2) * pixel_width) + sample_x * sample_width - pixel_width/2)
+                            y_comp = up_vector.normalize() * (((y - height/2) * pixel_width) + sample_y * sample_height - pixel_width/2)
 
-                self.canvas.save_color(x, y, color)
+                            cur_vec = eye_ray.v + x_comp + y_comp
+                            cur_ray = Ray3(camera_position, cur_vec)
+                            samples.append(self.trace(cur_ray))
+
+                    self.canvas.save_color(x, y, self.average_samples(samples))
+                else:
+                    x_comp = right_vector.normalize() * ((x - width/2) * pixel_width)
+                    y_comp = up_vector.normalize() * ((y - height/2) * pixel_width)
+
+                    cur_vec = eye_ray.v + x_comp + y_comp
+                    cur_ray = Ray3(camera_position, cur_vec)
+                    self.canvas.save_color(x, y, self.trace(cur_ray))
+
+
 
             # progress reports
             if self.worker_id == 0:
