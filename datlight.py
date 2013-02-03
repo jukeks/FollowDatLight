@@ -23,34 +23,42 @@ class Camera:
         self.position = Point3(0, 5, 20)
         self.look_at = Point3(0, 0, 0)
         self.up_vector = Vector3(0, 1, 0)   # Camera's up vector
-        self.fov = 30                       # View angle   
+        self.fov = 50                       # View angle
 
 
 class World:
     def __init__(self):
         self.camera = Camera()
 
-        self.lights = [Point3(20, 20, 20),
-                       #Point3(-20, 20, 20),
-                       #Point3(0, 20, 0),
+        self.lights = [#Point3(20, 20, 20),
+                       Point3(-20, 20, 20),
+                       #Point3(1, 20, 20),
         ]
 
         self.objects = [#Sphere(Point3( 3,  2,    2), 2.0, Point3(1.0, 0.0, 0.0)),
                         Sphere(Point3(-2,  4,  -10), 3.0),
                         #Sphere(Point3(-5,  1.2, 10), 1.2, Point3(0.0, 0.0, 1.0)),
                         Surface(Point3(1, 0, 1), Point3(1, 0, 0), Point3(0, 0, 1)),
+                        #Surface(Point3(-10, 0, 0), Point3(-10, 1, 0), Point3(-10, 0, 1)),
+                        #Surface(Point3(10, 0, 0), Point3(10, 1, 0), Point3(10, 0, 1)),
         ]
 
 
 class Main:
-    def __init__(self, width, height, jobs, recursion_depth):
-        self.width = width
-        self.height = height
+    def __init__(self, width, height, jobs, recursion_depth, antialiasing = 4):
+        if not antialiasing in [0, 4, 8, 16]:
+            print "Invalid antialiasing value"
+            raise
+
+
+        self.width = width if antialiasing == 0 else width * antialiasing / 2
+        self.height = height if antialiasing == 0 else height * antialiasing / 2
         self.jobs = jobs
-        self.canvas = Canvas(self.width, self.height)
+        self.canvas = Canvas(self.width, self.height, antialiasing)
         self.world = World()
         self.camera = Camera()
         self.recursion_depth = recursion_depth
+        self.antialiasing = antialiasing
 
     def render(self):
         elapsed_time = 0
@@ -73,21 +81,29 @@ class Main:
         elapsed_time += end_time - start_time
 
         print "Time usage:"
-        print "Rendering\t", end_time - start_time
+        print "Rendering\t\t", end_time - start_time
+
+        """
+        if self.antialiasing in [4, 8, 16]:
+            start_time = time.time()
+            self.canvas.antialias()
+            end_time = time.time()
+            print "Antialiasing\t", end_time - start_time
+        """
 
         start_time = time.time()
         self.canvas.write()
         end_time = time.time()
-        print "Writing\t\t", end_time - start_time
+        print "Writing\t\t\t", end_time - start_time
 
         elapsed_time += end_time - start_time
-        print "Total time\t", elapsed_time
+        print "Total time\t\t", elapsed_time
 
 
 
 
 class Canvas:
-    def __init__(self, width, height, filename = "trace.png"):
+    def __init__(self, width, height, antialiasing=4, filename = "trace.png", ):
         self.width = width
         self.height = height
         self.filename = filename
@@ -95,9 +111,11 @@ class Canvas:
             size_or_initializer=self.width*self.height,
             lock=False
         )
+        self.antialiasing = antialiasing
     """
     def write(self):
-        a = array.array('i', self.data)
+        a = array.array('I', self.data)
+        a.t
         im = Image.fromstring('I', (self.width, self.height), a.tostring())
         im.save(self.filename, "PNG")
     """
@@ -112,6 +130,33 @@ class Canvas:
 
         im.save(self.filename, "PNG")
 
+    def antialias(self):
+        data = array.array('I', (0,)* (self.width * self.height / self.antialiasing))
+        for i in range(0, self.width, self.antialiasing/2):
+            offset = i * self.height
+            for j in range(0, self.height, self.antialiasing/2):
+                """
+                if self.antialiasing == 4:
+                    samples = (self.data[offset + j], self.data[offset + j + 1],
+                            self.data[offset + j + self.height], self.data[offset + j + self.height + 1])
+                elif self.antialiasing == 8:"""
+
+                samples = []
+                for i_ in range(self.antialiasing/2):
+                    for j_ in range(self.antialiasing/2):
+                        samples.append(self.int_to_rgb(self.data[offset + i_ * self.height + j + j_]))
+
+                r = sum([val[0] for val in samples])/self.antialiasing
+                g = sum([val[1] for val in samples])/self.antialiasing
+                b = sum([val[2] for val in samples])/self.antialiasing
+
+                data[offset/self.antialiasing + j/self.antialiasing/2] = r*256*256 + g*256 + b
+
+
+        self.data = data
+        self.height /= self.antialiasing/2
+        self.width /= self.antialiasing/2
+
     def rgb_to_int(self, color):
         return int(color.x*255)*256*256 + int(color.y*255)*256 + int(color.z*255)
 
@@ -119,7 +164,7 @@ class Canvas:
         return ((rgbint >> 16) % 256, (rgbint >> 8) % 256, rgbint % 256)
 
     def save_color(self, x, y, color):
-        #self.data[y * self.width + x] = self.RGBToInt(color)
+        #self.data[y * self.width + x] = self.rgb_to_int(color)
         self.data[x * self.height + y] = self.rgb_to_int(color)
 
 
@@ -136,11 +181,11 @@ def detect_cpus():
                 return ncpus
         else: # OSX:
             return int(os.popen2("sysctl -n hw.ncpu")[1].read())
-        # Windows:
+    # Windows:
     if os.environ.has_key("NUMBER_OF_PROCESSORS"):
         ncpus = int(os.environ["NUMBER_OF_PROCESSORS"]);
         if ncpus > 0:
             return ncpus
     return 1 # Default
 
-Main(width=1024, height=768, jobs=detect_cpus(), recursion_depth=1).render()
+Main(width=1024, height=768, jobs=detect_cpus(), recursion_depth=1, antialiasing=0).render()

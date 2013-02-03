@@ -131,15 +131,10 @@ class Tracer(Process):
         # progress reports
         next_report = 10
 
-        # TODO: calculate width more intelligently
-        pixel_width = 0.02
+        # TODO: calculate this more intelligently
+        pixel_width = 0.02/1024 * width
 
         for x in range(self.worker_id, width, self.worker_count):
-            # load distribution
-            '''
-            if (x % self.workercount) != self.worker_id:
-                continue
-           '''
             x_comp = right_vector.normalize() * ((x - width/2) * pixel_width)
             for y in range(height):
                 y_comp = up_vector.normalize() * ((y - height/2) * pixel_width)
